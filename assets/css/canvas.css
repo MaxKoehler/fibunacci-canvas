@@ -1,0 +1,55 @@
+html {
+  height: 100%; }
+
+body {
+  height: 100%; }
+
+#c {
+  vertical-align: middle;
+  display: inline-block;
+  width: 100%;
+  height: 100%; }
+
+#controls {
+  position: absolute;
+  left: 0;
+  top: 0; }
+
+/* jQuery Stage */
+.info {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: black; }
+
+.info .value {
+  font-family: monospace;
+  font-size: 12pt;
+  color: #ffffff; }
+
+.device {
+  border-radius: 8px;
+  margin-top: 20px; }
+
+.stage-size-phone .device {
+  background-color: blue; }
+
+.stage-size-tablet .device {
+  background-color: green; }
+
+.stage-size-desktop .device {
+  background-color: red; }
+
+.stage-orientation-portrait .device {
+  width: 90px;
+  height: 160px; }
+
+.stage-orientation-square .device {
+  width: 120px;
+  height: 120px; }
+
+.stage-orientation-landscape .device {
+  width: 160px;
+  height: 90px; }
+
+/*# sourceMappingURL=canvas.css.map */
