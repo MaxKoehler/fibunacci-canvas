@@ -1,129 +1,200 @@
-// Initiate with jQuery
+// jQuery Quatsch
 $.noConflict();
 jQuery( document ).ready(function( $ ) {
 
-// Parameters
-var numMovers = 128;
-var circleRadius = 3;
+// Constants
+// Eigentlich nicht wirklich ein Parameter, aber hier wird bestimmt, wie weit die Zeichen Funktion dem Kreisradius folgt. Ein mal "Math.PI" ist dabei 180°, also mal zwei dann eine ganze Drehung. Das sollte so bleiben! 
+var radCirc = Math.PI*2;
+var PHI = ( 1 + Math.sqrt(5) ) / 2;
+var goldenAngle = 360 / PHI; // = 222.5°
+var degree = Math.PI/180;
+// var gregorianYear = 31556952000; // ms
 
-var clear = 1;
-
-var innerOffset = 16*4;
-var outerOffset = 16*4;
-
-// Frames per Second
-var fps = 25;
-var loop = 1;
-var duration = 2*1000; // Duration until Timeout in ms
+// Typographie
+var fontSize = 16; // px
+var lineHeight = 1.5; // em
 
 // Global Variables
 var running;
 var canvas, ctx;
 var canvasW, canvasH, canvasMin;
-var radCirc = Math.PI*2;
-var PHI = ( 1 + Math.sqrt(5) ) / 2;
-var goldenAngle = 360 / PHI; // = 222.5°
-// var gregorianYear = 31556952000; // ms
+var movers = [];
+
+//                     //
+//  P A R A M E T E R  //
+//                     //
 
 
-// jQuery.stage Information
-var showStage = function (stage, stageOld) {
-  $.each( stage, function (name, value) {
-      $(".info .value." + name).html(value);
-  });
-};
-showStage($.stage(), null);
-$(window).stage(function (ev, stage, stageOld) {
-    showStage(stage, stageOld);
-});
 
-console.log( "$.stage().dp: " + $.stage().dp + "px");
+
+var numMovers = 256;
+var circleRadius = 2;
+
+var optionRandomColor = 0;
+var optionRandomColorAlpha = 0;
+ 
+function getHSLa(hue,sat,light,alpha) {
+  return "hsla(" + hue + "," + sat + "%," + light + "%," + alpha + ")";
+}
+var circleFillColor = "hsla(0,0%,100%,1)"; // getHSLa(0,0,0,1/128);
+console.log("circleFillColor: " + circleFillColor);
+
+var innerOffset = fontSize*lineHeight*0; // Innerer Abstand
+var outerOffset = fontSize*lineHeight*4; // Äußerer Abstand
+
+var clear = 1;
+
+var fps = 25; // Bilder pro Sekunde
+var loop = 1; // Nur einmal oder immer wieder?
+
 
 // Dimensions
 
-  // Maximum Radius ( Viewport Diagonal / 2 )
-  var radiusMax = $.stage().dp / 2;
+// Maximum Radius ( ViewportDiagonal / 2 )
+var maxRadius = $.stage().dp / 2;
+// console.log(maxRadius);
 
 
-// Mover Array
-var movers = [];
+// Der Ursprung allen Übels
 
-var phase; // $.now(); // /timeSpan*100;
+var origin = calcOrigin();
+
+// "Ab geht die Post" - Funktion
+
+var startTime = $.now();
+// console.log(startTime/1000/60/60/24/7/4/12);
+
+var phase = startTime*degree;
+
+// Geschwindigkeit
+
+// var time = 1; // 1/25/60/60/24; // /7; // /4; // /12;
+
+// console.log(canvasMin);
+var maxSize; // = ((canvasMin/2)-outerOffset-innerOffset)/numMovers;
 
 setup();
-if ( loop ) { startAnimation(); }
 
+console.log("maxSize: " + maxSize + "px");
+
+var frame = 0;
+function run() {
+  frame++; 
+  clearCanvas(ctx);
+
+  var passedSeconds = frame/25;
+
+  // Spin the whole thing
+
+  var spinSpeed = 0; // degrees per second 
+  var spin = spinSpeed*passedSeconds*degree;
+  // console.log( passedSeconds*degree );
+
+  for (i=0;i<numMovers;i++) {
+
+    m = movers[i]; // Hole den aktuellen Punkt, solange bis jeder einmal drankam.
+
+    var morphSpeed = 1/8;
+    var morph = i * ( morphSpeed*passedSeconds*degree + phase );
+
+    // speed = (frame)/25/60/10;
+    // position = goldenAngle*i;
+    // radians = speed*degree + position*degree;
+
+    // Die gleichmäßige Verteilung der Punkte auf dem bestimmten Radius.
+
+    radius = (maxSize/numMovers)*i+innerOffset; // i;    
+
+    m.x = origin.x + Math.sin(morph + spin) * radius;
+    m.y = origin.y + Math.cos(morph + spin) * radius;
+
+    // Speicher / Male den Punkt
+    movers[i] = m;
+    ctx.beginPath();
+    ctx.arc( m.x, m.y, m.size, 0, radCirc);
+    ctx.fillStyle = m.color;
+    ctx.fill();
+  }
+}
 
 function setup() {
-
   // Setup Canvas
   canvas = document.getElementById('c');
   ctx = canvas.getContext('2d');
   calcDimensions(canvas);
+
+  // Visualisiere den äußeren Abstand
+
+  // radius = (canvasMin/2)-outerOffset;
+  // ctx.beginPath();
+  // ctx.arc( origin.x, origin.y, radius, 0, radCirc);
+  // ctx.fillStyle = 'hsla(0,0%,0%,.025)';
+  // ctx.fill();
+
+  // Visualisiere den inneren Abstand
+
+  // radius = innerOffset;
+  // ctx.beginPath();
+  // ctx.arc( origin.x, origin.y, radius, 0, radCirc);
+  // ctx.fillStyle = 'hsla(0,0%,0%,1)';
+  // ctx.fill();
+
   // on Click: Toggle Animation
   canvas.addEventListener('click',function(){if(running){stopAnimation()}else{startAnimation()}},false);
 
   // Create Movers
   for (i=0;i<numMovers;i++) {
+
     var m = new Mover();
-    m.size = circleRadius;
-    m.color = getRandomRGB();
+
+    // console.log(i);
+    if ( i == 0 ) {
+      // console.log("i==0: " + (i==0));
+      m.size = 1;
+    } else {
+      m.size = circleRadius;
+    }
+
+    if(optionRandomColor) {
+      if(optionRandomColorAlpha){
+        m.color = getRandomRGBa();
+      } else {
+        m.color = getRandomRGB();
+      }
+    } else {
+      m.color = circleFillColor;
+    }
     movers[i] = m;
+
+  }
+
+  if ( loop ) { 
+    startAnimation(); 
   }
 }
 
-var rad = Math.PI/180;
-var counter = 0;
-function run() {
-  counter++;
-  clearCanvas(ctx); // Clear canvas if necessary
+// jQuery.stage Calculations
+var showStage = function (stage, stageOld) {
+  $.each( stage, function (name, value) {
+      $(".info .value." + name).html(value);
+  });
+};
+// jQuery.stage Informations
+showStage($.stage(), null);
+$(window).stage(function (ev, stage, stageOld) {
+    showStage(stage, stageOld);
+});
 
-  var phase = 0; // counter / goldenAngle * 100;
-  var angle = goldenAngle*counter; //  + phase;
-
-  // Recalculate nowTime is propably too much
-  // - instead use a simple counter
-  // phase = $.now()/1000;
-
-  // console.log(phase);
-  for (i=0;i<numMovers;i++) {
-    m = movers[i];
-
-
-    radians = 0 + i/rad*goldenAngle + rad*counter
-    ;
-
-    radius = (canvasMin/2)*(i+1)/(numMovers);
-
-    m.x = canvasW/2 + Math.sin(radians) * radius;
-    m.y = canvasH/2 + Math.cos(radians) * radius;
-
-    // Store Mover
-    movers[i] = m;
-
-    mX = m.x;
-    mY = m.y;
-
-    // mSize = m.size
-
-    mColor = m.color;
-    // Draw Mover
-    ctx.beginPath();
-
-    ctx.arc( mX, mY, m.size, 0, radCirc);
-    ctx.fillStyle = mColor;
-    ctx.fill();
-  }
-}
+// console.log( "$.stage().dp: " + $.stage().dp + "px");
 
 function startAnimation() {
-  console.log("Start();");
+  console.log("// Start");
   mainInterval = window.setInterval(run, 1/fps*1000); // msPerFrame
   running = 1;
 }
 
 function stopAnimation() {
-  console.log("Stop();");
+  console.log("// Stop");
   clearInterval(mainInterval)
   running = 0;
 }
@@ -131,21 +202,18 @@ function stopAnimation() {
 // Mover Class
 function Mover() {
   // Properties
-
-    // Color - Generate random on creation
     this.color = 'white'; // getRandomRGB();
-
-    // Position
-    this.y     = 0;
+    this.size  = 0;
+    this.y     = 0; 
     this.x     = 0;
-
     // Accelleration ( Speed, Direction )
     // this.vX    = 0;
     // this.vY    = 0;
+}
 
-    // Size
-    this.size  = 0;
-
+function Point() {
+  this.y = 0;
+  this.x = 0;
 }
 
 // Additional functions
@@ -163,7 +231,7 @@ function drawDevShapes(ctx) {
 
 function clearCanvas(ctx) {
   if (clear) {
-    ctx.globalCompositeOperation = 'destination-over';
+    // ctx.globalCompositeOperation = 'destination-over';
     ctx.clearRect(0,0,canvasW,canvasH); // clear canvas
     // ctx.globalCompositeOperation = 'source-over'; // Quelle über?
   }
@@ -175,6 +243,17 @@ function calcDimensions(canvas) {
   canvasW = canvas.width;
   canvasH = canvas.height;
   canvasMin = Math.min(canvasW, canvasH);
+  maxSize = ((canvasMin/2)-outerOffset-innerOffset);
 }
+
+// Berechne den Ursprung allen Übels
+
+function calcOrigin(){
+  var origin = new Point();
+  origin.x = $.stage().w / 2;
+  origin.y = $.stage().h / 2;
+  origin.min = Math.min(origin.x, origin.y);
+  return origin;
+};
 
 }); // jQuery End
